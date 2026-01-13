@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 虚拟试穿</title>
+    <title>AI 虚拟试穿 (完整版)</title>
     <style>
-        /* --- 极简风格 CSS --- */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f5f5f7; /* 浅灰背景 */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f5f5f7;
             color: #1d1d1f;
             display: flex;
             flex-direction: column;
@@ -18,15 +17,11 @@
             padding: 20px;
         }
 
-        h1 {
-            font-weight: 600;
-            margin-bottom: 30px;
-            font-size: 24px;
-        }
+        h1 { font-weight: 600; margin-bottom: 30px; }
 
         .container {
             width: 100%;
-            max-width: 400px; /* 模拟手机宽度 */
+            max-width: 400px;
             display: flex;
             flex-direction: column;
             gap: 20px;
@@ -34,27 +29,10 @@
 
         .card {
             background: white;
-            border-radius: 18px; /* 大圆角 */
+            border-radius: 18px;
             padding: 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* 柔和阴影 */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             text-align: center;
-            transition: transform 0.2s;
-        }
-
-        .card:hover {
-            transform: translateY(-2px); /* 悬停微动 */
-        }
-
-        h3 {
-            margin-top: 0;
-            font-size: 16px;
-            color: #86868b;
-            margin-bottom: 15px;
-        }
-
-        /* 隐藏原始的文件上传按钮，用自定义按钮代替 */
-        input[type="file"] {
-            display: none;
         }
 
         .custom-upload {
@@ -66,19 +44,21 @@
             cursor: pointer;
             font-size: 14px;
             font-weight: 500;
+            margin-top: 10px;
         }
+
+        input[type="file"] { display: none; }
 
         img {
             max-width: 100%;
             border-radius: 12px;
             margin-top: 15px;
-            display: none; /* 默认隐藏，有图片才显示 */
+            display: none;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
-        /* 主按钮样式 */
         #try-on-btn {
-            background-color: #0071e3; /* 苹果蓝 */
+            background-color: #0071e3;
             color: white;
             border: none;
             padding: 18px;
@@ -88,17 +68,19 @@
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3);
             transition: background-color 0.2s;
+            margin-top: 10px;
         }
 
         #try-on-btn:disabled {
             background-color: #999;
             cursor: not-allowed;
-            box-shadow: none;
         }
-
-        #result-area {
-            display: none; /* 默认隐藏结果区 */
-            margin-top: 20px;
+        
+        #status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #86868b;
+            min-height: 20px;
         }
     </style>
 </head>
@@ -108,79 +90,104 @@
 
     <div class="container">
         <div class="card">
-            <h3>第一步：上传人物照片</h3>
+            <h3>第一步：上传人物</h3>
             <label for="person-upload" class="custom-upload">选择照片</label>
             <input type="file" id="person-upload" accept="image/*">
-            <img id="person-preview" alt="人物预览">
+            <img id="person-preview">
         </div>
 
         <div class="card">
-            <h3>第二步：上传衣服照片</h3>
+            <h3>第二步：上传衣服</h3>
             <label for="clothes-upload" class="custom-upload">选择照片</label>
             <input type="file" id="clothes-upload" accept="image/*">
-            <img id="clothes-preview" alt="衣服预览">
+            <img id="clothes-preview">
         </div>
 
         <button id="try-on-btn">开始试穿</button>
+        <p id="status"></p>
 
-        <div id="result-area" class="card">
+        <div id="result-area" class="card" style="display: none;">
             <h3>试穿结果</h3>
-            <img id="result-image" src="" alt="最终效果" style="display: block;">
+            <img id="result-image" style="display: block;">
         </div>
     </div>
 
     <script>
+        // --- 这里是关键：连接你的 Vercel 后端 ---
+        const API_URL = "https://ai-fitting-one.vercel.app/api/try-on"; 
+        // -------------------------------------------
+
         const personInput = document.getElementById('person-upload');
-        const personPreview = document.getElementById('person-preview');
         const clothesInput = document.getElementById('clothes-upload');
-        const clothesPreview = document.getElementById('clothes-preview');
         const tryOnBtn = document.getElementById('try-on-btn');
+        const statusText = document.getElementById('status');
         const resultArea = document.getElementById('result-area');
         const resultImage = document.getElementById('result-image');
 
-        function handlePreview(input, img) {
+        // 简单的图片预览功能
+        function setupPreview(input, imgId) {
             input.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (file) {
                     const reader = new FileReader();
                     reader.onload = (e) => {
+                        const img = document.getElementById(imgId);
                         img.src = e.target.result;
-                        img.style.display = 'block'; // 显示图片
+                        img.style.display = 'block';
                     };
                     reader.readAsDataURL(file);
                 }
             });
         }
+        setupPreview(personInput, 'person-preview');
+        setupPreview(clothesInput, 'clothes-preview');
 
-        handlePreview(personInput, personPreview);
-        handlePreview(clothesInput, clothesPreview);
-
-        tryOnBtn.addEventListener('click', () => {
+        // 点击按钮时的逻辑
+        tryOnBtn.addEventListener('click', async () => {
             if (!personInput.files[0] || !clothesInput.files[0]) {
-                alert('请先上传两张照片！⚠️');
+                alert('请先上传两张照片！');
                 return;
             }
 
-            // 模拟加载
-            tryOnBtn.textContent = '✨ 正在合成中...';
             tryOnBtn.disabled = true;
+            tryOnBtn.textContent = '✨ AI 正在处理...';
+            statusText.textContent = '正在连接云端服务器...';
+            resultArea.style.display = 'none';
 
-            setTimeout(() => {
-                tryOnBtn.textContent = '开始试穿';
+            try {
+                // 1. 准备数据
+                const formData = new FormData();
+                formData.append('person', personInput.files[0]);
+                formData.append('clothes', clothesInput.files[0]);
+
+                // 2. 发送请求给你的 Vercel 后端
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ test: "ping" }), // 演示版暂时只发简单数据
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+
+                // 3. 显示结果
+                if (data.success) {
+                    resultImage.src = data.image;
+                    resultArea.style.display = 'block';
+                    statusText.textContent = '试穿成功！';
+                    resultArea.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    alert('出错啦：' + JSON.stringify(data));
+                }
+
+            } catch (error) {
+                console.error(error);
+                statusText.textContent = '连接失败，请检查网络';
+                alert('连接后端失败，可能是 Vercel 还在启动，请稍后再试！');
+            } finally {
                 tryOnBtn.disabled = false;
-                
-                // 显示结果区域
-                resultArea.style.display = 'block';
-                // 模拟结果（这里用占位图，以后接 API）
-                resultImage.src = 'https://picsum.photos/300/400'; 
-                
-                // 自动滚动到底部
-                resultArea.scrollIntoView({ behavior: 'smooth' });
-                
-                alert('试穿完成！(当前为演示模式)');
-            }, 2000);
+                tryOnBtn.textContent = '开始试穿';
+            }
         });
     </script>
 </body>
 </html>
-
