@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 虚拟试穿 (完整版)</title>
+    <title>AI 虚拟试穿 </title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -81,6 +81,7 @@
             font-size: 14px;
             color: #86868b;
             min-height: 20px;
+            text-align: center;
         }
     </style>
 </head>
@@ -113,10 +114,9 @@
     </div>
 
     <script>
-        // --- 这里是关键：连接你的 Vercel 后端 ---
+        // ⚠️ 本地测试时请用 localhost，部署后换成 Vercel 链接
         const API_URL = "https://ai-fitting-one.vercel.app/api/try-on"; 
-        // -------------------------------------------
-
+        
         const personInput = document.getElementById('person-upload');
         const clothesInput = document.getElementById('clothes-upload');
         const tryOnBtn = document.getElementById('try-on-btn');
@@ -124,25 +124,31 @@
         const resultArea = document.getElementById('result-area');
         const resultImage = document.getElementById('result-image');
 
-        // 简单的图片预览功能
+        // 辅助函数：把文件转换成 Base64 字符串
+        const fileToBase64 = (file) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = (error) => reject(error);
+            });
+        };
+
+        // 图片预览逻辑
         function setupPreview(input, imgId) {
             input.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        const img = document.getElementById(imgId);
-                        img.src = e.target.result;
-                        img.style.display = 'block';
-                    };
-                    reader.readAsDataURL(file);
+                    const img = document.getElementById(imgId);
+                    img.src = URL.createObjectURL(file); // 使用 ObjectURL 预览更快
+                    img.style.display = 'block';
                 }
             });
         }
         setupPreview(personInput, 'person-preview');
         setupPreview(clothesInput, 'clothes-preview');
 
-        // 点击按钮时的逻辑
+        // 点击按钮逻辑
         tryOnBtn.addEventListener('click', async () => {
             if (!personInput.files[0] || !clothesInput.files[0]) {
                 alert('请先上传两张照片！');
@@ -151,38 +157,43 @@
 
             tryOnBtn.disabled = true;
             tryOnBtn.textContent = '✨ AI 正在处理...';
-            statusText.textContent = '正在连接云端服务器...';
+            statusText.textContent = '正在转换图片并上传...';
             resultArea.style.display = 'none';
 
             try {
-                // 1. 准备数据
-                const formData = new FormData();
-                formData.append('person', personInput.files[0]);
-                formData.append('clothes', clothesInput.files[0]);
+                // 1. 将图片转换为 Base64
+                const humanBase64 = await fileToBase64(personInput.files[0]);
+                const garmBase64 = await fileToBase64(clothesInput.files[0]);
 
-                // 2. 发送请求给你的 Vercel 后端
+                statusText.textContent = '正在连接云端 AI，请耐心等待 (约 20-40秒)...';
+
+                // 2. 发送给后端
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    body: JSON.stringify({ test: "ping" }), // 演示版暂时只发简单数据
+                    body: JSON.stringify({ 
+                        human_img: humanBase64,
+                        garm_img: garmBase64
+                    }),
                     headers: { 'Content-Type': 'application/json' }
                 });
 
                 const data = await response.json();
 
-                // 3. 显示结果
+                // 3. 处理结果
                 if (data.success) {
                     resultImage.src = data.image;
                     resultArea.style.display = 'block';
-                    statusText.textContent = '试穿成功！';
+                    statusText.textContent = '试穿成功！🎉';
                     resultArea.scrollIntoView({ behavior: 'smooth' });
                 } else {
-                    alert('出错啦：' + JSON.stringify(data));
+                    statusText.textContent = 'AI 处理出错';
+                    alert('出错啦：' + (data.error || '未知错误'));
                 }
 
             } catch (error) {
                 console.error(error);
-                statusText.textContent = '连接失败，请检查网络';
-                alert('连接后端失败，可能是 Vercel 还在启动，请稍后再试！');
+                statusText.textContent = '网络连接失败';
+                alert('连接后端失败，请确认后端服务已启动！');
             } finally {
                 tryOnBtn.disabled = false;
                 tryOnBtn.textContent = '开始试穿';
